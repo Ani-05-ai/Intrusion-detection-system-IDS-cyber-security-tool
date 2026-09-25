@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FireIDS</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #10161d;
+    --panel-2: #151c24;
+    --border: #232c36;
+    --text: #d6e0ea;
+    --muted: #7c8894;
+    --high: #ff4d5e;
+    --medium: #ffb020;
+    --low: #3ddc97;
+    --accent: #4da3ff;
+    --mono: 'Consolas', 'SF Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .title { display: flex; align-items: center; gap: 10px; }
+  .title h1 { font-size: 19px; margin: 0; letter-spacing: 0.3px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--low); box-shadow: 0 0 8px var(--low); }
+  .subtitle { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  button.refresh {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+  button.refresh:hover { border-color: var(--accent); color: var(--accent); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .stat .num { font-size: 26px; font-weight: 700; font-family: var(--mono); }
+  .stat .label { color: var(--muted); font-size: 12px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat.high .num { color: var(--high); }
+  .stat.medium .num { color: var(--medium); }
+  .stat.low .num { color: var(--low); }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; margin-bottom: 20px;
+  }
+  .panel-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-head h2 { font-size: 13.5px; margin: 0; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  .filters { display: flex; gap: 6px; }
+  .chip {
+    font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+    color: var(--muted); cursor: pointer; background: transparent;
+  }
+  .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(77,163,255,0.08); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 18px; color: var(--muted); font-weight: 500;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 11px 18px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--panel-2); }
+
+  .sev { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
+  .sev::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+  .sev.high { color: var(--high); } .sev.high::before { background: var(--high); }
+  .sev.medium { color: var(--medium); } .sev.medium::before { background: var(--medium); }
+  .sev.low { color: var(--low); } .sev.low::before { background: var(--low); }
+
+  .src-tag {
+    font-family: var(--mono); font-size: 10.5px; padding: 2px 7px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+  }
+  .rule-name { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  .reason { color: var(--muted); font-size: 12.3px; margin-top: 2px; }
+  .ts { color: var(--muted); font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+  .ip { font-family: var(--mono); font-size: 12px; }
+
+  .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* AI investigate button */
+  .ai-btn {
+    background: rgba(77,163,255,0.08); border: 1px solid var(--border); color: var(--accent);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .ai-btn:hover { border-color: var(--accent); background: rgba(77,163,255,0.16); }
+  .ai-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    max-width: 560px; width: 100%; max-height: 80vh; overflow-y: auto;
+    padding: 22px 24px; position: relative;
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .modal .modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px; background: none; border: none;
+    color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { font-size: 13.5px; line-height: 1.65; color: var(--text); white-space: pre-wrap; }
+  .modal-body strong { color: var(--accent); }
+  .modal-loading { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Navbar */
+  nav {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 0 20px; padding-top: env(safe-area-inset-top, 0px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto; height: 54px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; letter-spacing: 0.2px; }
+  .brand .flame { color: var(--high); }
+  .nav-links { display: flex; align-items: center; gap: 22px; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500;
+  }
+  .nav-links a.active { color: var(--text); }
+  .analyst {
+    display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px 5px;
+    border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+  }
+  .analyst:hover { border-color: var(--accent); }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c5cff);
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .analyst-name { font-size: 12.5px; }
+  .analyst-role { font-size: 10px; color: var(--muted); }
+
+  /* Safety gauge */
+  .safety-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 24px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  }
+  .gauge-wrap { display: flex; align-items: center; justify-content: center; position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+  .gauge-wrap svg { transform: rotate(-90deg); }
+  .gauge-center { position: absolute; text-align: center; }
+  .gauge-center .pct { font-size: 26px; font-weight: 700; font-family: var(--mono); color: var(--low); }
+  .gauge-center .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .safety-copy { flex: 1; min-width: 220px; }
+  .safety-copy h2 { margin: 0 0 6px; font-size: 15px; }
+  .safety-copy p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .safety-breakdown { display: flex; gap: 18px; margin-top: 12px; }
+  .sb-item { font-size: 12px; }
+  .sb-item .n { font-family: var(--mono); font-weight: 700; }
+  .sb-item.crit .n { color: var(--high); }
+  .sb-item.watch .n { color: var(--medium); }
+  .sb-item.clean .n { color: var(--low); }
+
+  /* Contribution heatmap */
+  .heatmap-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px 20px; margin-top: 20px; overflow-x: auto; }
+  .heatmap-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .heatmap-head h2 { font-size: 13.5px; margin: 0; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  .legend { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .legend .sq { width: 9px; height: 9px; border-radius: 2px; }
+
+  .heatmap-scroll { display: inline-block; min-width: 100%; }
+  .month-row { display: grid; grid-auto-flow: column; grid-auto-columns: 12px; gap: 3px; margin-bottom: 4px; padding-left: 22px; }
+  .month-label { font-size: 10px; color: var(--muted); grid-column: span 4; }
+  .heatmap-body { display: flex; gap: 6px; }
+  .dow-labels { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; padding-top: 1px; }
+  .dow-labels span { font-size: 9px; color: var(--muted); line-height: 12px; }
+  .heatmap-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 3px; }
+  .cell { width: 12px; height: 12px; border-radius: 2px; cursor: default; }
+  .cell[data-level="0"] { background: var(--panel-2); }
+  .cell[data-level="1"] { background: #14361f; }
+  .cell[data-level="2"] { background: #1c5a2c; }
+  .cell[data-level="3"] { background: #2f9142; }
+  .cell[data-level="4"] { background: #3ddc97; }
+  .heatmap-sub { color: var(--muted); font-size: 11.5px; margin-top: 12px; }
+</style>
+</head>
+<nav>
+  <div class="nav-inner">
+    <div class="brand"><span class="flame">🔥</span>FireIDS</div>
+    <div class="nav-links">
+      <a href="#" class="active">Home</a>
+      <a href="#">Alerts</a>
+      <a href="#">Reports</a>
+      <div class="analyst">
+        <div class="avatar">AN</div>
+        <div>
+          <div class="analyst-name">Anindita</div>
+          <div class="analyst-role">Analyst</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header>
+    <div class="title">
+      <span class="dot"></span>
+      <div>
+        <h1>Live Alert Monitor</h1>
+        <div class="subtitle">Rule engine + ML detection · connected to /alerts</div>
+      </div>
+    </div>
+    <button class="refresh" onclick="renderAll()">↻ Refresh</button>
+  </header>
+
+  <div class="safety-panel">
+    <div class="gauge-wrap">
+      <svg width="150" height="150" viewBox="0 0 150 150">
+        <circle cx="75" cy="75" r="62" fill="none" stroke="var(--panel-2)" stroke-width="12"/>
+        <circle id="gaugeArc" cx="75" cy="75" r="62" fill="none" stroke="var(--low)" stroke-width="12"
+                stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="389.6"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="pct" id="gaugePct">—</div>
+        <div class="lbl">Safety Score</div>
+      </div>
+    </div>
+    <div class="safety-copy">
+      <h2>System Status</h2>
+      <p id="safetyText">Calculating current exposure based on unresolved high-severity alerts vs total traffic analyzed.</p>
+      <div class="safety-breakdown">
+        <div class="sb-item crit"><span class="n" id="sbCrit">0</span> high severity</div>
+        <div class="sb-item watch"><span class="n" id="sbWatch">0</span> medium severity</div>
+        <div class="sb-item clean"><span class="n" id="sbClean">0</span> low severity</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Recent Alerts</h2>
+      <div class="filters" id="filters">
+        <button class="chip active" data-sev="all">All</button>
+        <button class="chip" data-sev="high">High</button>
+        <button class="chip" data-sev="medium">Medium</button>
+        <button class="chip" data-sev="low">Low</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Severity</th>
+          <th>Rule / Source</th>
+          <th>Detail</th>
+          <th>Detection Path</th>
+          <th>Time</th>
+          <th>AI</th>
+        </tr>
+      </thead>
+      <tbody id="alertBody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;">No alerts match this filter.</div>
+  </div>
+
+  <!-- AI Investigation Modal -->
+  <div class="modal-backdrop" id="aiModalBackdrop">
+    <div class="modal">
+      <button class="modal-close" onclick="closeAiModal()">✕</button>
+      <h3>✨ AI Investigation</h3>
+      <div class="modal-sub" id="aiModalSub">Powered by Groq</div>
+      <div id="aiModalBody">
+        <div class="modal-loading"><span class="spinner"></span> Investigating alert…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="heatmap-panel">
+    <div class="heatmap-head">
+      <h2>Detection Activity — This Year</h2>
+      <div class="legend">
+        Less
+        <span class="sq" style="background:var(--panel-2)"></span>
+        <span class="sq" style="background:#14361f"></span>
+        <span class="sq" style="background:#1c5a2c"></span>
+        <span class="sq" style="background:#2f9142"></span>
+        <span class="sq" style="background:#3ddc97"></span>
+        More
+      </div>
+    </div>
+    <div class="heatmap-scroll">
+      <div class="month-row" id="monthRow"></div>
+      <div class="heatmap-body">
+        <div class="dow-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
+        <div class="heatmap-grid" id="heatmapGrid"></div>
+      </div>
+    </div>
+    <div class="heatmap-sub">Each square = one day · shade = number of attacks detected that day. Analyst review-marking isn't tracked in the backend yet — this will layer on top once that's added.</div>
+  </div>
+
+</div>
+
+<script>
+// Live data — fetched from your Flask backend
+let liveAlerts = [];
+
+async function fetchAlerts() {
+  try {
+    const res = await fetch("/alerts");
+    if (!res.ok) throw new Error("Request failed: " + res.status);
+    const data = await res.json();
+
+    // Normalize: your /alerts documents don't currently include a per-alert
+    // timestamp or a flat rules array time field, so we backfill a display time
+    // and bucket-by-day using insertion order until you add a real `created_at`.
+    liveAlerts = data.map((a, i) => ({
+      ...a,
+      time: a.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      _date: a.created_at ? new Date(a.created_at) : new Date()
+    }));
+  } catch (err) {
+    console.error("Could not load alerts:", err);
+    liveAlerts = [];
+    document.getElementById("safetyText").textContent =
+      "Could not reach /alerts — is the Flask server running?";
+  }
+}
+
+let activeFilter = "all";
+
+function computeStats(alerts) {
+  const total = alerts.length;
+  const high = alerts.filter(a => a.severity === "high").length;
+  const medium = alerts.filter(a => a.severity === "medium").length;
+  const low = alerts.filter(a => a.severity === "low").length;
+  return { total, high, medium, low };
+}
+
+function renderStats(alerts) {
+  const s = computeStats(alerts);
+  document.getElementById("stats").innerHTML = `
+    <div class="stat"><div class="num">${s.total}</div><div class="label">Total Alerts</div></div>
+    <div class="stat high"><div class="num">${s.high}</div><div class="label">High Severity</div></div>
+    <div class="stat medium"><div class="num">${s.medium}</div><div class="label">Medium Severity</div></div>
+    <div class="stat low"><div class="num">${s.low}</div><div class="label">Low Severity</div></div>
+  `;
+}
+
+function detailLine(alert) {
+  if (alert.rules && alert.rules.length > 0) {
+    return alert.rules.map(r => `<div class="rule-name">${r.rule}</div><div class="reason">${r.reason}</div>`).join("");
+  }
+  if (alert.ml) {
+    return `<div class="rule-name">${alert.ml.model}</div><div class="reason">Flagged by ML classifier</div>`;
+  }
+  return `<div class="reason">—</div>`;
+}
+
+function renderTable(alerts) {
+  const filtered = activeFilter === "all" ? alerts : alerts.filter(a => a.severity === activeFilter);
+  const body = document.getElementById("alertBody");
+  const empty = document.getElementById("emptyState");
+
+  if (filtered.length === 0) {
+    body.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+
+  body.innerHTML = filtered.map(a => `
+    <tr>
+      <td><span class="sev ${a.severity}">${a.severity.toUpperCase()}</span></td>
+      <td>${detailLine(a)}</td>
+      <td class="ip">${a.event.url || a.event.event_type || a.event.log_source || "—"}${a.event.source_ip ? " · " + a.event.source_ip : ""}</td>
+      <td><span class="src-tag">${a.source}</span></td>
+      <td class="ts">${a.time}</td>
+      <td>${a._id ? `<button class="ai-btn" title="AI Investigate" onclick="openAiModal('${a._id}')">✨</button>` : "—"}</td>
+    </tr>
+  `).join("");
+}
+
+function renderSafety(alerts) {
+  const s = computeStats(alerts);
+  // simple weighted score: high counts most against safety, medium a bit, low barely
+  const penalty = (s.high * 12) + (s.medium * 5) + (s.low * 1);
+  const score = Math.max(0, Math.min(100, 100 - penalty));
+
+  const circumference = 389.6;
+  const offset = circumference - (circumference * score) / 100;
+  const arc = document.getElementById("gaugeArc");
+  arc.setAttribute("stroke-dashoffset", offset);
+
+  let color = "var(--low)", text = "System healthy — no urgent action needed.";
+  if (score < 50) { color = "var(--high)"; text = "Elevated risk — multiple high-severity alerts need review."; }
+  else if (score < 80) { color = "var(--medium)"; text = "Some active alerts — worth a review pass today."; }
+
+  arc.setAttribute("stroke", color);
+  document.getElementById("gaugePct").textContent = score + "%";
+  document.getElementById("gaugePct").style.color = color;
+  document.getElementById("safetyText").textContent = text;
+
+  document.getElementById("sbCrit").textContent = s.high;
+  document.getElementById("sbWatch").textContent = s.medium;
+  document.getElementById("sbClean").textContent = s.low;
+}
+
+function renderHeatmap(alerts) {
+  const grid = document.getElementById("heatmapGrid");
+  const monthRow = document.getElementById("monthRow");
+
+  // count alerts per day (YYYY-MM-DD) from real data
+  const countsByDay = {};
+  alerts.forEach(a => {
+    const key = a._date.toISOString().slice(0, 10);
+    countsByDay[key] = (countsByDay[key] || 0) + 1;
+  });
+
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 1); // Jan 1 this year
+  const startDow = start.getDay();
+  const gridStart = new Date(start);
+  gridStart.setDate(start.getDate() - startDow);
+
+  const totalDays = Math.ceil((today - gridStart) / 86400000) + 1;
+  const totalWeeks = Math.ceil(totalDays / 7);
+
+  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let cellsHtml = "";
+  let monthHtml = "";
+  let lastMonth = -1;
+  let weekColSpan = 0;
+  let pendingLabel = "";
+
+  function levelFor(count) {
+    if (count === 0) return 0;
+    if (count === 1) return 1;
+    if (count <= 3) return 2;
+    if (count <= 6) return 3;
+    return 4;
+  }
+
+  for (let w = 0; w < totalWeeks; w++) {
+    const weekStartDate = new Date(gridStart);
+    weekStartDate.setDate(gridStart.getDate() + w * 7);
+
+    if (weekStartDate.getMonth() !== lastMonth && weekStartDate <= today) {
+      if (pendingLabel) monthHtml += `<div class="month-label" style="grid-column: span ${weekColSpan};">${pendingLabel}</div>`;
+      pendingLabel = monthNames[weekStartDate.getMonth()];
+      lastMonth = weekStartDate.getMonth();
+      weekColSpan = 0;
+    }
+    weekColSpan++;
+
+    for (let d = 0; d < 7; d++) {
+      const cellDate = new Date(gridStart);
+      cellDate.setDate(gridStart.getDate() + w * 7 + d);
+
+      if (cellDate > today) {
+        cellsHtml += `<div class="cell" data-level="0" style="visibility:hidden;"></div>`;
+        continue;
+      }
+
+      const key = cellDate.toISOString().slice(0, 10);
+      const count = countsByDay[key] || 0;
+      const level = levelFor(count);
+
+      const dateStr = cellDate.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      cellsHtml += `<div class="cell" data-level="${level}" title="${dateStr}: ${count} detection${count === 1 ? "" : "s"}"></div>`;
+    }
+  }
+  if (pendingLabel) monthHtml += `<div class="month-label" style="grid-column: span ${weekColSpan};">${pendingLabel}</div>`;
+
+  grid.innerHTML = cellsHtml;
+  monthRow.innerHTML = monthHtml;
+}
+
+async function renderAll() {
+  await fetchAlerts();
+  renderStats(liveAlerts);
+  renderTable(liveAlerts);
+  renderSafety(liveAlerts);
+  renderHeatmap(liveAlerts);
+}
+
+document.getElementById("filters").addEventListener("click", (e) => {
+  const btn = e.target.closest(".chip");
+  if (!btn) return;
+  document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  activeFilter = btn.dataset.sev;
+  renderTable(liveAlerts);
+});
+
+// ---- AI Investigation modal ----
+function simpleMarkdownToHtml(text) {
+  // light formatting only: bold + line breaks, since the model returns basic markdown
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
+}
+
+function openAiModal(alertId) {
+  const backdrop = document.getElementById("aiModalBackdrop");
+  const body = document.getElementById("aiModalBody");
+  const sub = document.getElementById("aiModalSub");
+
+  backdrop.classList.add("open");
+  body.innerHTML = `<div class="modal-loading"><span class="spinner"></span> Investigating alert…</div>`;
+  sub.textContent = "Powered by AI";
+
+  fetch(`/investigate/${alertId}`)
+    .then(res => {
+      if (!res.ok) throw new Error("Request failed: " + res.status);
+      return res.json();
+    })
+    .then(data => {
+      body.innerHTML = `<div class="modal-body">${simpleMarkdownToHtml(data.investigation || "No summary returned.")}</div>`;
+    })
+    .catch(err => {
+      body.innerHTML = `<div class="modal-body">Could not load investigation — ${err.message}. Is the Flask server running and is GROQ_API_KEY set?</div>`;
+    });
+}
+
+function closeAiModal() {
+  document.getElementById("aiModalBackdrop").classList.remove("open");
+}
+
+document.getElementById("aiModalBackdrop").addEventListener("click", (e) => {
+  if (e.target.id === "aiModalBackdrop") closeAiModal();
+});
+
+renderAll();
+</script>
+</body>
+</html>
