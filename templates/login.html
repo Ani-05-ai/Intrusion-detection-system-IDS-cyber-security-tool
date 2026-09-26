@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FireIDS — Login</title>
+<style>
+  :root {
+    --bg: #0b0e13;
+    --panel: #10141b;
+    --panel-2: #151b23;
+    --border: #232a35;
+    --text: #dbe3ec;
+    --muted: #8791a0;
+    --high: #ef4a5a;
+    --accent: #4f8ef7;
+    --accent-dim: rgba(79,142,247,0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%; margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 36px 32px; width: 100%; max-width: 380px; margin: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 20px; margin-bottom: 6px; }
+  .brand .mark {
+    width: 28px; height: 28px; border-radius: 7px; background: var(--accent-dim); border: 1px solid var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--accent); font-weight: 800;
+  }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+  label { font-size: 12.5px; color: var(--muted); display: block; margin-bottom: 6px; margin-top: 16px; }
+  input {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-size: 14px; outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    width: 100%; margin-top: 24px; background: var(--accent); color: #061420; border: none;
+    border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  .error {
+    background: rgba(255,77,94,0.1); border: 1px solid var(--high); color: var(--high);
+    font-size: 12.5px; padding: 8px 12px; border-radius: 6px; margin-top: 16px; display: none;
+  }
+  .error.show { display: block; }
+  .switch { text-align: center; margin-top: 20px; font-size: 12.5px; color: var(--muted); }
+  .switch a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand"><span class="mark">F</span>FireIDS</div>
+  <div class="subtitle">Sign in to the analyst dashboard</div>
+
+  <form id="loginForm">
+    <label>Username</label>
+    <input type="text" id="username" required autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="password" required autocomplete="current-password">
+    <div class="error" id="errorBox"></div>
+    <button type="submit">Sign In</button>
+  </form>
+
+  <div class="switch">Don't have an account? <a href="/signup">Sign up</a></div>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errorBox = document.getElementById("errorBox");
+  errorBox.classList.remove("show");
+
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorBox.textContent = data.error || "Login failed";
+      errorBox.classList.add("show");
+      return;
+    }
+    window.location.href = "/dashboard";
+  } catch (err) {
+    errorBox.textContent = "Could not reach the server. Try again.";
+    errorBox.classList.add("show");
+  }
+});
+</script>
+</body>
+</html>

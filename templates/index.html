@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FireIDS — AI-Powered Intrusion Detection</title>
+<style>
+  :root {
+    --bg: #0b0e13;
+    --panel: #10141b;
+    --panel-2: #151b23;
+    --border: #232a35;
+    --text: #dbe3ec;
+    --muted: #8791a0;
+    --accent: #4f8ef7;
+    --accent-dim: rgba(79,142,247,0.12);
+    --danger: #ef4a5a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  a { color: inherit; text-decoration: none; }
+
+  nav {
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: rgba(11,14,19,0.85); backdrop-filter: blur(8px);
+    z-index: 10; padding-top: env(safe-area-inset-top, 0px);
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto; height: 60px; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 17px; letter-spacing: 0.2px; }
+  .brand .mark {
+    width: 26px; height: 26px; border-radius: 6px; background: var(--accent-dim); border: 1px solid var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--accent); font-weight: 800;
+  }
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+  .btn-ghost {
+    padding: 8px 16px; border-radius: 7px; font-size: 13.5px; font-weight: 600; color: var(--muted);
+    border: 1px solid transparent;
+  }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-primary {
+    padding: 8px 18px; border-radius: 7px; font-size: 13.5px; font-weight: 700;
+    background: var(--accent); color: #061021;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .hero { max-width: 1100px; margin: 0 auto; padding: 90px 24px 60px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--accent);
+    background: var(--accent-dim); border: 1px solid rgba(79,142,247,0.3); padding: 5px 12px; border-radius: 999px;
+    margin-bottom: 22px;
+  }
+  h1 { font-size: 44px; line-height: 1.15; max-width: 680px; font-weight: 800; letter-spacing: -0.5px; }
+  .hero p {
+    color: var(--muted); font-size: 16.5px; line-height: 1.6; max-width: 560px; margin-top: 18px;
+  }
+  .hero-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
+  .btn-lg {
+    padding: 13px 26px; border-radius: 9px; font-size: 14.5px; font-weight: 700;
+  }
+  .btn-lg.primary { background: var(--accent); color: #061021; }
+  .btn-lg.primary:hover { opacity: 0.92; }
+  .btn-lg.outline { border: 1px solid var(--border); color: var(--text); }
+  .btn-lg.outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .stats-strip {
+    max-width: 1100px; margin: 60px auto 0; padding: 0 24px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  }
+  .stat-cell { background: var(--panel); padding: 22px 20px; }
+  .stat-cell .n { font-size: 24px; font-weight: 800; color: var(--accent); }
+  .stat-cell .l { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  .features {
+    max-width: 1100px; margin: 80px auto; padding: 0 24px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+  }
+  @media (max-width: 780px) { .features { grid-template-columns: 1fr; } h1 { font-size: 32px; } .stats-strip { grid-template-columns: repeat(2, 1fr); } }
+  .feature {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+  }
+  .feature .icon {
+    width: 36px; height: 36px; border-radius: 8px; background: var(--accent-dim); border: 1px solid rgba(79,142,247,0.3);
+    display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 14px; color: var(--accent);
+  }
+  .feature h3 { font-size: 15px; margin-bottom: 8px; }
+  .feature p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 26px 24px; text-align: center;
+    color: var(--muted); font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <div class="brand"><span class="mark">F</span>FireIDS</div>
+    <div class="nav-actions">
+      <a href="/login" class="btn-ghost">Sign In</a>
+      <a href="/signup" class="btn-primary">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="tag">● Real-time threat detection</div>
+  <h1>AI-powered intrusion detection for modern security teams.</h1>
+  <p>FireIDS combines rule-based detection, machine learning, and an AI investigation agent to help analysts spot, understand, and respond to threats faster.</p>
+  <div class="hero-actions">
+    <a href="/signup" class="btn-lg primary">Get Started</a>
+    <a href="/login" class="btn-lg outline">Sign In</a>
+  </div>
+</div>
+
+<div class="stats-strip">
+  <div class="stat-cell"><div class="n">8+</div><div class="l">Detection Rules</div></div>
+  <div class="stat-cell"><div class="n">2</div><div class="l">ML Models</div></div>
+  <div class="stat-cell"><div class="n">AI</div><div class="l">Investigation Agent</div></div>
+  <div class="stat-cell"><div class="n">24/7</div><div class="l">Monitoring</div></div>
+</div>
+
+<div class="features">
+  <div class="feature">
+    <div class="icon">◆</div>
+    <h3>Rule + ML Detection</h3>
+    <p>Combines pattern-based rules with trained ML models to catch both known signatures and anomalous behavior.</p>
+  </div>
+  <div class="feature">
+    <div class="icon">✦</div>
+    <h3>AI Investigation</h3>
+    <p>Every alert can be handed to an AI agent that correlates history and drafts a plain-language incident summary.</p>
+  </div>
+  <div class="feature">
+    <div class="icon">▣</div>
+    <h3>Analyst Dashboard</h3>
+    <p>A live view of system safety, severity breakdown, and detection activity over time — built for fast triage.</p>
+  </div>
+</div>
+
+<footer>FireIDS — Intrusion Detection & Security Analytics</footer>
+
+</body>
+</html>
